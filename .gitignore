@@ -1,6 +1,27 @@
+# ── Dependencies ─────────────────────────────────────────────
 node_modules/
+
+# ── Environment Variables (NEVER commit real credentials) ────
 .env
+.env.local
+.env.production
+
+# ── Logs ─────────────────────────────────────────────────────
 *.log
+logs/
+npm-debug.log*
+
+# ── Test Coverage ─────────────────────────────────────────────
 coverage/
+
+# ── Build Output ──────────────────────────────────────────────
 dist/
+build/
+
+# ── OS Files ──────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/
+.idea/
