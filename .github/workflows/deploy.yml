@@ -16,13 +16,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          # cache: 'npm'   ← KALDIRILDI: package-lock.json sorunu yaşandı
 
       - name: Install dependencies
         run: npm install
 
       - name: Run tests
-        run: npm test --if-present
+        run: npm test -- --passWithNoTests
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -37,7 +37,6 @@ jobs:
     environment:
       name: production
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -48,6 +47,6 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: webapp-3tier-demo
+          app-name: webapp-3tier-mr        # ← DÜZELTİLDİ: webapp-3tier-demo değil
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
