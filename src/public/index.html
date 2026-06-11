@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Azure 3-Tier Web App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a1a1a; }
+    header {
+      background: linear-gradient(135deg, #0078d4, #004e8c);
+      color: white; padding: 24px 40px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    header h1 { font-size: 1.6rem; }
+    header span { font-size: 2rem; }
+    .badge { background: #50e6ff; color: #003a78; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; margin-left: 12px; }
+    main { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 10px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card h2 { color: #0078d4; margin-bottom: 16px; font-size: 1.1rem; border-bottom: 2px solid #e6f3fb; padding-bottom: 10px; }
+    input, textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid #d0d0d0;
+      border-radius: 6px; font-size: 0.95rem; margin-bottom: 12px;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #0078d4; }
+    button {
+      background: #0078d4; color: white; border: none;
+      padding: 10px 24px; border-radius: 6px; cursor: pointer;
+      font-size: 0.95rem; font-weight: 600; transition: background 0.2s;
+    }
+    button:hover { background: #005a9e; }
+    #items-list { margin-top: 16px; }
+    .item {
+      background: #f0f4f8; border-left: 4px solid #0078d4;
+      padding: 10px 14px; border-radius: 4px; margin-bottom: 8px;
+    }
+    .item strong { color: #004e8c; }
+    #status { margin-top: 12px; padding: 10px 14px; border-radius: 6px; display: none; }
+    .success { background: #dff6dd; color: #107c10; display: block !important; }
+    .error   { background: #fde7e9; color: #d13438; display: block !important; }
+    .arch { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-top: 8px; }
+    .arch-box {
+      background: #e6f3fb; border: 2px solid #0078d4;
+      padding: 8px 18px; border-radius: 6px; font-size: 0.85rem;
+      font-weight: 600; color: #004e8c;
+    }
+    .arch-arrow { color: #0078d4; font-size: 1.3rem; margin: 0 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>☁</span>
+  <div>
+    <h1>Azure 3-Tier Web App <span class="badge">LIVE</span></h1>
+    <p style="font-size:0.85rem; opacity:0.85; margin-top:4px;">App Service · Azure SQL · Storage Account</p>
+  </div>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>🏗️ Architecture</h2>
+    <div class="arch">
+      <div class="arch-box">Users</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">Azure App Service</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">Azure SQL Database</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">Storage Account</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>➕ Add Item to Database</h2>
+    <input type="text" id="item-name" placeholder="Item name" />
+    <textarea id="item-desc" rows="2" placeholder="Description"></textarea>
+    <button onclick="createItem()">Save to Azure SQL</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>📋 Items from Azure SQL</h2>
+    <button onclick="loadItems()">Load Items</button>
+    <div id="items-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>📦 Upload to Blob Storage</h2>
+    <button onclick="uploadFile()">Upload Sample File</button>
+    <div id="upload-status"></div>
+  </div>
+
+</main>
+
+<script>
+  async function createItem() {
+    const name = document.getElementById('item-name').value;
+    const description = document.getElementById('item-desc').value;
+    const status = document.getElementById('status');
+    try {
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+      const data = await res.json();
+      status.textContent = res.ok ? '✅ ' + data.message : '❌ ' + data.error;
+      status.className = res.ok ? 'success' : 'error';
+    } catch (e) {
+      status.textContent = '❌ Request failed';
+      status.className = 'error';
+    }
+  }
+
+  async function loadItems() {
+    const list = document.getElementById('items-list');
+    try {
+      const res = await fetch('/api/items');
+      const items = await res.json();
+      list.innerHTML = items.length
+        ? items.map(i => `<div class="item"><strong>${i.name}</strong><br/>${i.description}</div>`).join('')
+        : '<p style="color:#888; margin-top:12px;">No items found.</p>';
+    } catch (e) {
+      list.innerHTML = '<p style="color:#d13438; margin-top:12px;">Failed to load items.</p>';
+    }
+  }
+
+  async function uploadFile() {
+    const status = document.getElementById('upload-status');
+    try {
+      const res = await fetch('/api/upload', { method: 'POST' });
+      const data = await res.json();
+      status.textContent = res.ok ? '✅ Uploaded: ' + data.blobName : '❌ ' + data.error;
+      status.className = res.ok ? 'success' : 'error';
+      status.style.display = 'block';
+    } catch (e) {
+      status.textContent = '❌ Upload failed';
+      status.className = 'error';
+      status.style.display = 'block';
+    }
+  }
+</script>
+
+</body>
+</html>
