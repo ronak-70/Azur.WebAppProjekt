@@ -76,6 +76,21 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
+// Delete item
+app.delete('/api/items/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pool = await sql.connect(dbConfig);
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Items WHERE id = @id');
+    res.json({ message: 'Item deleted' });
+  } catch (err) {
+    console.error('DB error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
