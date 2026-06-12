@@ -1,7 +1,7 @@
 # ☁️ Azure 3-Tier Web Application
 
 > 🚀 A hands-on cloud project demonstrating enterprise-grade Azure architecture —
-> built from scratch by two students who wanted to understand how real-world cloud applications actually work.
+> built from scratch to understand how real-world cloud applications actually work.
 
 <br/>
 
@@ -25,27 +25,17 @@
 
 ---
 
-## 👥 Built By
-
-This is a **team project** — designed, built, and deployed together.
-
-| 👤 [Emre](#) | 👤 [Khaliq](#) |
-|:---:|:---:|
-| *(LinkedIn coming soon)* | *(LinkedIn coming soon)* |
-
-> 💬 *"We didn't just follow a tutorial — we hit real errors, debugged live deployments, and figured it out together. That's the whole point."*
-
----
-
 ## 🧠 The Story
 
-We started this project with a simple question:
+This project started with a simple question:
 
 > **"How does a real cloud application actually connect all its pieces?"**
 
-Most tutorials show you how to deploy one service. This project does something different — it connects **three Azure services** so they work together as a single system. A user action on the frontend writes to a SQL database, uploads a file to Blob Storage, and everything is monitored in real time.
+Most tutorials show you how to deploy one service in isolation. This project is different — it connects **multiple Azure services** so they work together as a single system. A user action on the frontend writes to a SQL database, sends a Queue notification, and uploads a file to Blob Storage — all monitored in real time.
 
-We built it, broke it, fixed it, and deployed it — all using Azure's free and low-cost tiers.
+I built it, broke it, fixed it, and deployed it — all using Azure's free and low-cost tiers.
+
+> 💬 *"I didn't just follow a tutorial — I hit real errors, debugged live deployments, and figured it out. That's the whole point."*
 
 ---
 
@@ -65,7 +55,7 @@ We built it, broke it, fixed it, and deployed it — all using Azure's free and 
            │ SQL Connection        │ Storage Connection
 ┌──────────▼──────────┐  ┌────────▼────────────────────┐
 │  Azure SQL Database │  │   Azure Blob Storage        │
-│   (Relational data) │  │   (File uploads / Assets)   │
+│   (Relational data) │  │   + Queue Storage           │
 └─────────────────────┘  └─────────────────────────────┘
 ```
 
@@ -76,7 +66,9 @@ We built it, broke it, fixed it, and deployed it — all using Azure's free and 
 ## ✨ Features
 
 - ✅ **Full CRUD** — Create, Read, Delete items via Azure SQL
+- ✅ **Queue Notifications** — Every new item triggers an Azure Queue message
 - ✅ **File Upload** — Store files in Azure Blob Storage
+- ✅ **RBAC** — Role-based access control via Microsoft Entra ID
 - ✅ **Live Health Check** — Real-time App Service status in the UI
 - ✅ **CI/CD Pipeline** — Auto-deploy to Azure on every `git push`
 - ✅ **Modern UI** — Tailwind CSS, toast notifications, loading states
@@ -91,7 +83,7 @@ We built it, broke it, fixed it, and deployed it — all using Azure's free and 
 |--------|----------|-------------|
 | `GET` | `/health` | App health check |
 | `GET` | `/api/items` | Fetch all items from SQL |
-| `POST` | `/api/items` | Create a new item |
+| `POST` | `/api/items` | Create a new item + Queue notification|
 | `DELETE` | `/api/items/:id` | Delete an item by ID |
 | `POST` | `/api/upload` | Upload file to Blob Storage |
 
@@ -225,15 +217,16 @@ This project runs at near-zero cost using free and low-cost tiers:
 
 ---
 
-## 🎓 What We Learned
+## 🎓 What I Learned
 
 - 🔗 How to connect multiple Azure services into one working system
-- 🔐 Securing credentials with Azure Environment Variables and never exposing secrets in code
-- 🚀 Building a real CI/CD pipeline with GitHub Actions and Publish Profile auth
-- 🔥 Debugging live deployments using App Service Log Stream
-- 🌐 Understanding Azure SQL firewall rules and network access
-- 💸 Optimizing cloud costs using free and low-cost service tiers
-- 🛠️ Solving real deployment errors — 409 conflicts, DNS failures, login errors — the hard way
+- 📨 How Azure Queue Storage enables async event-driven communication
+- 🔐 How to secure resources with RBAC and Microsoft Entra ID
+- 🚀 How to build a real CI/CD pipeline with GitHub Actions
+- 🔥 How to debug live deployments using App Service Log Stream
+- 🌐 How Azure SQL firewall rules and network access work
+- 💸 How to optimize cloud costs using free and low-cost tiers
+- 🛠️ How to solve real deployment errors the hard way
 
 ---
 
@@ -247,4 +240,4 @@ For a detailed explanation of the architecture, deployment steps, and design dec
 
 ## 📄 License
 
-MIT © 2026 **Emre & Khaliq**
+MIT © 2026
