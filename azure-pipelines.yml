@@ -18,7 +18,7 @@ stages:
   - job: BuildJob
     steps:
 
-    - task: NodeTool@0
+    - task: UseNodeVersion@1
       inputs:
         versionSpec: '20.x'
       displayName: 'Install Node.js 20'
