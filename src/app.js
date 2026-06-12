@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { QueueServiceClient } = require('@azure/storage-queue');
 const sql = require('mssql');
 
 const app = express();
@@ -21,6 +22,33 @@ const dbConfig = {
     trustServerCertificate: false,
   },
 };
+
+// ── Queue Config ─────────────────────────────────────────────────────────────
+const QUEUE_NAME = 'item-notifications'; //
+
+async function sendQueueMessage(itemName) {
+  try {
+    const connStr = process.env.STORAGE_CONNECTION_STRING;
+    const queueClient = QueueServiceClient
+      .fromConnectionString(connStr)
+      .getQueueClient(QUEUE_NAME);
+
+    // The queue message must be base64-encoded
+    const message = Buffer.from(
+      JSON.stringify({
+        event: 'item_created',
+        item: itemName,
+        timestamp: new Date().toISOString()
+      })
+    ).toString('base64');
+
+    await queueClient.sendMessage(message);
+    console.log(`Queue message sent: ${itemName}`);
+  } catch (err) {
+    // Don't let the queue error stop the application; just log it
+    console.error('Queue error:', err.message);
+  }
+}
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -53,6 +81,7 @@ app.post('/api/items', async (req, res) => {
       .input('name', sql.NVarChar, name)
       .input('description', sql.NVarChar, description)
       .query('INSERT INTO Items (name, description) VALUES (@name, @description)');
+    await sendQueueMessage(name);
     res.status(201).json({ message: 'Item created successfully' });
   } catch (err) {
     console.error('DB error:', err.message);
