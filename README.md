@@ -9,6 +9,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-20_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge&logo=express&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![Azure DevOps](https://img.shields.io/badge/Azure_DevOps-0078D4?style=for-the-badge&logo=azuredevops&logoColor=white)
 ![SQL](https://img.shields.io/badge/Azure_SQL-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)
 ![Storage](https://img.shields.io/badge/Blob_Storage-0089D6?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-brightgreen?style=for-the-badge)
@@ -70,7 +71,8 @@ I built it, broke it, fixed it, and deployed it — all using Azure's free and l
 - ✅ **File Upload** — Store files in Azure Blob Storage
 - ✅ **RBAC** — Role-based access control via Microsoft Entra ID
 - ✅ **Live Health Check** — Real-time App Service status in the UI
-- ✅ **CI/CD Pipeline** — Auto-deploy to Azure on every `git push`
+- ✅ **Dual CI/CD** — GitHub Actions + Azure DevOps Pipelines running in parallel
+- ✅ **Approval Gate** — Manual approval required before every Production deploy
 - ✅ **Modern UI** — Tailwind CSS, toast notifications, loading states
 - ✅ **Secure Config** — All secrets in Azure Environment Variables, never in code
 - ✅ **Monitoring** — Azure Monitor + Application Insights connected
@@ -105,6 +107,7 @@ azure-web-app-project/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions CI/CD
+├── azure-pipelines.yml         # Azure DevOps Pipeline (multi-stage)
 ├── .env.example                # Environment variable template
 ├── package.json
 └── README.md
@@ -164,11 +167,13 @@ npm run dev
 ---
 
 <details>
-<summary>⚙️ <strong>CI/CD Pipeline — click to expand</strong></summary>
+<summary>⚙️ <strong>CI/CD Pipelines — click to expand</strong></summary>
 
 <br/>
 
-Every push to `main` triggers an automatic deployment:
+This project uses **two parallel CI/CD pipelines** — both trigger on every push to `main`.
+
+### Pipeline 1 — GitHub Actions (`deploy.yml`)
 
 ```
 git push origin main
@@ -189,6 +194,31 @@ Deploy to Azure App Service
 3. Name: `AZURE_WEBAPP_PUBLISH_PROFILE`
 4. Value: paste the publish profile content
 
+---
+
+### Pipeline 2 — Azure DevOps (`azure-pipelines.yml`)
+
+```
+git push origin main
+        ↓
+Azure DevOps Pipeline starts
+        ↓
+Build & Test stage:
+  npm install + npm test + zip artifact
+        ↓
+Deploy to Production stage:
+  Manual approval gate → Deploy to App Service
+        ↓
+✅ Live after approval
+```
+
+**One-time setup:**
+
+1. Create Azure DevOps organization at [dev.azure.com](https://dev.azure.com)
+2. Create Service Connection (Azure Resource Manager)
+3. Connect GitHub repo via OAuth
+4. Run pipeline — Azure DevOps auto-detects `azure-pipelines.yml`
+
 </details>
 
 ---
@@ -206,11 +236,12 @@ This project runs at near-zero cost using free and low-cost tiers:
 | Azure SQL Database | Basic DTU | ~$5 |
 | Azure Storage Account | LRS Standard | ~$0.01 |
 | Application Insights | Free tier (5GB) | **$0** |
+| Azure DevOps | Free tier (5 users) | **$0** |
 | **Total** | | **~$5/mo** |
 
 > 💡 Delete the resource group after testing to stop all charges instantly:
 > ```bash
-> az group delete --name rg-3tier-lab-01 --yes --no-wait
+> az group delete --name rg-3tier-app --yes --no-wait
 > ```
 
 </details>
@@ -222,7 +253,8 @@ This project runs at near-zero cost using free and low-cost tiers:
 - 🔗 How to connect multiple Azure services into one working system
 - 📨 How Azure Queue Storage enables async event-driven communication
 - 🔐 How to secure resources with RBAC and Microsoft Entra ID
-- 🚀 How to build a real CI/CD pipeline with GitHub Actions
+- 🚀 How to build CI/CD pipelines with both GitHub Actions and Azure DevOps
+- 🏗️ How multi-stage pipelines with approval gates work in production
 - 🔥 How to debug live deployments using App Service Log Stream
 - 🌐 How Azure SQL firewall rules and network access work
 - 💸 How to optimize cloud costs using free and low-cost tiers
