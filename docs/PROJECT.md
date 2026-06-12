@@ -1,32 +1,32 @@
 # 📘 Project Documentation — Azure 3-Tier Web Application
 
-> This document explains the full story behind this project — the architecture decisions, the deployment process, the real errors we hit, and what we learned from each one.
+> This document explains the full story behind this project — the architecture decisions, the deployment process, the real errors I hit, and what I learned from each one.
 
 ---
 
 ## 📌 Table of Contents
 
-- [Why We Built This](#-why-we-built-this)
+- [Why I Built This](#-why-i-built-this)
 - [Architecture Deep Dive](#️-architecture-deep-dive)
 - [Azure Services Explained](#-azure-services-explained)
 - [Design Decisions](#-design-decisions)
 - [Deployment Process](#-deployment-process)
-- [Real Challenges We Faced](#-real-challenges-we-faced)
+- [Real Challenges I Faced](#-real-challenges-i-faced)
 - [Security Approach](#-security-approach)
 - [Monitoring & Observability](#-monitoring--observability)
 - [Cost Management](#-cost-management)
-- [What We Learned](#-what-we-learned)
+- [What I Learned](#-what-i-learned)
 - [What Comes Next](#-what-comes-next)
 
 ---
 
-## 💡 Why We Built This
+## 💡 Why I Built This
 
 Most Azure tutorials teach you how to deploy one service in isolation. You follow the steps, it works, and you move on — but you never really understand how everything fits together.
 
-We wanted something different.
+I wanted something different.
 
-We wanted to build a system where **one user action triggers multiple Azure services** — where the frontend, the database, and the file storage all communicate as a single working application. Not three separate deployments sitting next to each other, but three services that actually depend on each other.
+I wanted to build a system where **one user action triggers multiple Azure services** — where the frontend, the database, and the file storage all communicate as a single working application. Not three separate deployments sitting next to each other, but three services that actually depend on each other.
 
 That's what this project is. And building it the hard way — hitting real errors, reading real logs, fixing real deployment failures — is what made it worth doing.
 
@@ -79,9 +79,10 @@ That's what this project is. And building it the hard way — hitting real error
    from Azure Environment Variables
 4. mssql driver opens a TCP connection to SQL Server on port 1433
 5. INSERT INTO Items executes → row is written
-6. App Service responds with { message: "Item created successfully" }
-7. UI shows a green toast notification
-8. Items table auto-refreshes — new row appears
+6. A Queue message is sent to item-notifications queue
+7. App Service responds with { message: "Item created successfully" }
+8. UI shows a green toast notification
+9. Items table auto-refreshes — new row appears
 ```
 
 ### Data Flow — What Happens When a User Uploads a File
@@ -101,17 +102,17 @@ That's what this project is. And building it the hard way — hitting real error
 
 ### Azure App Service
 
-The hosting layer. Our Node.js + Express application runs here. App Service handles:
+The hosting layer. My Node.js + Express application runs here. App Service handles:
 - HTTPS termination
 - Automatic restarts on crash
-- Environment variable injection (our secrets live here, not in code)
-- Integration with GitHub Actions for CI/CD
+- Environment variable injection (secrets live here, not in code)
+- Integration with GitHub Actions and Azure DevOps for CI/CD
 
-We chose **Linux + F1 Free tier** to keep costs at zero during development. The trade-off is a daily CPU quota limit, which is fine for a portfolio project.
+I chose **Linux + F1 Free tier** to keep costs at zero during development. The trade-off is a daily CPU quota limit, which is fine for a portfolio project.
 
 ### Azure SQL Database
 
-The relational data layer. We store all item records here in a single `Items` table. Key details:
+The relational data layer. All item records are stored here in a single `Items` table. Key details:
 - **Basic DTU tier** — the most cost-effective option (~$5/month)
 - **SQL Authentication** — username + password managed in App Service Environment Variables
 - **Firewall rule** — "Allow Azure services" enabled so App Service can reach the database
@@ -121,8 +122,23 @@ The relational data layer. We store all item records here in a single `Items` ta
 
 The file storage layer. When users upload a file, it goes into the `app-assets` container as a Block Blob. Key details:
 - **LRS (Locally Redundant Storage)** — 3 copies within the same datacenter, lowest cost
-- **Private access** — blobs are not publicly accessible, only our app can read/write
+- **Private access** — blobs are not publicly accessible, only the app can read/write
 - **Connection string auth** — the storage account key is stored in App Service Environment Variables
+
+### Azure Queue Storage
+
+The messaging layer. Every time a new item is created, a JSON message is sent to the `item-notifications` queue. Key details:
+- **Base64 encoded messages** — Azure Queue requires messages to be base64 encoded
+- **Same storage account** as Blob Storage — reuses the same connection string
+- **Decoupled architecture** — queue errors don't break the main item creation flow
+
+### Azure DevOps
+
+The enterprise CI/CD platform. Runs a multi-stage pipeline in parallel with GitHub Actions. Key details:
+- **Organization:** okayemre
+- **Service Connection:** Azure Resource Manager with Workload Identity Federation
+- **Two stages:** Build & Test → Deploy to Production
+- **Approval gate:** Manual approval required before every Production deploy
 
 ---
 
@@ -130,7 +146,7 @@ The file storage layer. When users upload a file, it goes into the `app-assets` 
 
 ### Why Node.js and not Python or .NET?
 
-We had existing familiarity with JavaScript. Node.js with Express is lightweight, easy to deploy on Azure App Service Linux, and the `mssql` and `@azure/storage-blob` npm packages are well-maintained official SDKs.
+I had existing familiarity with JavaScript. Node.js with Express is lightweight, easy to deploy on Azure App Service Linux, and the `mssql` and `@azure/storage-blob` npm packages are well-maintained official SDKs.
 
 ### Why Basic DTU and not Serverless SQL?
 
@@ -138,15 +154,19 @@ Serverless SQL auto-pauses after inactivity, which sounds cheaper — but the co
 
 ### Why F1 Free App Service Plan?
 
-We wanted to demonstrate the full architecture without spending money. F1 has a 60-minute daily CPU quota, which is enough for a portfolio project with low traffic. In a real production environment, we would upgrade to at least B1 Basic.
+I wanted to demonstrate the full architecture without spending money. F1 has a 60-minute daily CPU quota, which is enough for a portfolio project with low traffic. In a real production environment, I would upgrade to at least B1 Basic.
 
 ### Why Sweden Central?
 
-Azure for Students subscriptions have regional restrictions. Our policy allowed only 5 regions: `germanywestcentral`, `spaincentral`, `uaenorth`, `italynorth`, and `swedencentral`. Sweden Central had the most consistent availability during our testing.
+Azure for Students subscriptions have regional restrictions. My policy allowed only 5 regions: `germanywestcentral`, `spaincentral`, `uaenorth`, `italynorth`, and `swedencentral`. Sweden Central had the most consistent availability during testing.
 
-### Why Publish Profile for CI/CD and not Service Principal?
+### Why two CI/CD pipelines?
 
-Publish Profile authentication is simpler to set up and doesn't require Azure AD app registration. For a portfolio project, it's the right trade-off. For production workloads, a Service Principal with OIDC (federated credentials) would be the correct approach.
+GitHub Actions (deploy.yml) was already in place from Project 2. Rather than replacing it, I added Azure DevOps Pipelines in parallel — keeping both running. This demonstrates how enterprises often run multiple pipeline systems during migrations, and gives practical experience with both tools.
+
+### Why Publish Profile for GitHub Actions and Service Connection for Azure DevOps?
+
+Publish Profile is simpler for GitHub Actions and doesn't require Azure AD app registration. Azure DevOps uses a proper Service Connection with Workload Identity Federation, which is the more secure and production-grade approach. Using both shows the contrast between the two authentication methods.
 
 ---
 
@@ -155,9 +175,9 @@ Publish Profile authentication is simpler to set up and doesn't require Azure AD
 ### Infrastructure Setup
 
 ```
-1. Create Resource Group (rg-3tier-lab-01) → Sweden Central
+1. Create Resource Group (rg-3tier-app) → Sweden Central
 2. Create Azure SQL Server + Database (Basic DTU)
-3. Create Storage Account (LRS Standard) + app-assets container
+3. Create Storage Account (LRS Standard) + app-assets container + item-notifications queue
 4. Create App Service Plan (F1 Free, Linux)
 5. Create Web App (Node.js 20, Linux)
 6. Configure SQL firewall → Allow Azure services
@@ -167,7 +187,7 @@ Publish Profile authentication is simpler to set up and doesn't require Azure AD
 10. Configure Alert rules in Azure Monitor
 ```
 
-### CI/CD Pipeline
+### CI/CD Pipeline 1 — GitHub Actions
 
 ```yaml
 # Every push to main triggers:
@@ -182,11 +202,29 @@ Publish Profile authentication is simpler to set up and doesn't require Azure AD
 
 The deploy step authenticates using `AZURE_WEBAPP_PUBLISH_PROFILE`, stored as a GitHub Actions secret.
 
+### CI/CD Pipeline 2 — Azure DevOps
+
+```yaml
+# Every push to main triggers:
+Stage 1 — Build & Test:
+1. NodeTool@0               → install Node.js 20
+2. npm install              → install dependencies
+3. npm test                 → run tests (passWithNoTests)
+4. ArchiveFiles@2           → zip the artifact
+5. PublishBuildArtifacts@1  → store artifact in DevOps
+
+Stage 2 — Deploy to Production:
+6. Manual approval gate     → human confirms deploy
+7. AzureWebApp@1            → deploy zip to App Service
+```
+
+The deploy step authenticates using the `azure-connection` Service Connection (Azure Resource Manager, Workload Identity Federation).
+
 ---
 
-## 🔥 Real Challenges We Faced
+## 🔥 Real Challenges I Faced
 
-This section is the honest part. These are the actual errors we hit during this project and how we resolved each one.
+This section is the honest part. These are the actual errors I hit during this project and how I resolved each one.
 
 ---
 
@@ -275,7 +313,7 @@ DB error: Login failed for user 'sqladmin'
 ```
 
 **Root cause:**
-The `DB_NAME` environment variable was set to `db-3tier-lab-01` (the resource name we chose) but the actual database name inside the SQL server was `app-database` (the name set during creation).
+The `DB_NAME` environment variable was set to `db-3tier-lab-01` (the resource name) but the actual database name inside the SQL server was `app-database` (the name set during creation).
 
 **Fix:**
 Updated `DB_NAME` to `app-database` in App Service Environment Variables.
@@ -287,7 +325,7 @@ Updated `DB_NAME` to `app-database` in App Service Environment Variables.
 ### ❌ Challenge 6 — Storage "The specified container does not exist"
 
 **What happened:**
-File uploads failed because the app was looking for a container named `app-assets`, but we had only created a container named `uploads`.
+File uploads failed because the app was looking for a container named `app-assets`, but only a container named `uploads` existed.
 
 **Error:**
 ```
@@ -316,13 +354,35 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 
 ---
 
+### ⚠️ Challenge 8 — Azure DevOps "UseNodeVersion task is missing"
+
+**What happened:**
+After seeing a deprecation warning for `NodeTool@0`, I tried replacing it with `UseNodeVersion@1`. The pipeline immediately failed.
+
+**Error:**
+```
+A task is missing. The pipeline references a task called 'UseNodeVersion'.
+This usually indicates the task isn't installed.
+```
+
+**Root cause:**
+`UseNodeVersion@1` is not a built-in Azure DevOps task — the deprecation warning message was misleading. The correct replacement would be `UseNodeVersion@1` from a Marketplace extension, but it's not available by default on Microsoft-hosted agents.
+
+**Fix:**
+Reverted to `NodeTool@0`. The deprecation warning is informational only — the pipeline still runs correctly.
+
+**Lesson:** Deprecation warnings are not errors. Don't change working code based on a warning unless you've verified the replacement works first.
+
+---
+
 ## 🔐 Security Approach
 
 | What | How |
 |---|---|
 | Database credentials | Azure App Service Environment Variables |
 | Storage connection string | Azure App Service Environment Variables |
-| CI/CD authentication | GitHub Actions Secret (Publish Profile) |
+| GitHub Actions auth | GitHub Actions Secret (Publish Profile) |
+| Azure DevOps auth | Service Connection (Workload Identity Federation) |
 | SQL access | Firewall rule: Azure services only |
 | Blob Storage | Private container, no public access |
 | Code | Zero secrets in source code |
@@ -335,6 +395,7 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 - **Azure Monitor Alerts** — CPU alert configured: if CPU Time exceeds threshold, an email notification is sent
 - **App Service Log Stream** — used actively during debugging to see live application logs
 - **SQL Database Backups** — automatic 7-day Point-in-Time Restore, built into Basic tier
+- **Azure DevOps Pipeline Logs** — full build and deploy logs available per run, with stage-by-stage breakdown
 
 ---
 
@@ -346,6 +407,7 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 | Azure SQL Database | Basic DTU | ~$0.15 | ~$5 |
 | Storage Account | LRS Standard | ~$0.001 | ~$0.01 |
 | Application Insights | Free (5GB) | $0 | $0 |
+| Azure DevOps | Free (5 users) | $0 | $0 |
 | **Total** | | **~$0.15/day** | **~$5/mo** |
 
 **Cost optimization decisions:**
@@ -356,7 +418,7 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 
 ---
 
-## 🎓 What We Learned
+## 🎓 What I Learned
 
 ### Technical
 
@@ -365,6 +427,9 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 - How GitHub Actions artifacts work — build once, deploy the artifact
 - How Azure SQL firewall rules control inbound connections
 - How Blob Storage containers, access levels, and connection strings work together
+- How Azure Queue Storage enables decoupled, async communication between services
+- How Azure DevOps Service Connections authenticate to Azure using Workload Identity Federation
+- How multi-stage pipelines with approval gates control production deployments
 - How to read and interpret App Service Log Stream for live debugging
 
 ### Process
@@ -374,6 +439,7 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 - Rotate keys immediately if they are ever exposed
 - Let CI/CD deployments finish before pushing again
 - Copy resource names from Azure Portal — never type them manually
+- Deprecation warnings are not errors — verify before replacing working code
 
 ### Mindset
 
@@ -385,11 +451,9 @@ The `STORAGE_CONNECTION_STRING` (containing a real Azure Storage Account key) wa
 
 ## 🔮 What Comes Next
 
-If we were to continue developing this project, the next steps would be:
-
 - [ ] **Azure Key Vault** — move all secrets from Environment Variables to Key Vault references
-- [ ] **User Authentication** — add Microsoft Entra ID (Azure AD) login
-- [ ] **Azure Queue Storage** — add async notification system when items are created
+- [ ] **User Authentication** — add Microsoft Entra ID (Azure AD) login for the web app
+- [ ] **Staging Environment** — add a Staging App Service slot as a pre-production gate in the DevOps pipeline
 - [ ] **Azure CDN** — serve static assets faster globally
 - [ ] **Custom Domain + SSL** — replace the `.azurewebsites.net` URL
 - [ ] **Infrastructure as Code** — rewrite the setup using Bicep or Terraform
@@ -398,4 +462,4 @@ If we were to continue developing this project, the next steps would be:
 ---
 
 *Built with curiosity, debugged with patience.*
-*— Emre & Khaliq, 2026*
+*2026*
