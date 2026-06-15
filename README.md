@@ -22,7 +22,7 @@
 
 ## 👀 Preview
 
-![App Preview](https://raw.githubusercontent.com/okayemre/azure-web-app-project/main/app-preview.png)
+![App Preview](./docs/screenshots/12-live-app-ui.png)
 
 ---
 
@@ -42,6 +42,11 @@ I built it, broke it, fixed it, and deployed it — all using Azure's free and l
 
 ## 🏗️ Architecture
 
+![Architecture diagram](./docs/screenshots/01-architecture-diagram.png)
+
+<details>
+<summary>Text version</summary>
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │                      Users                          │
@@ -60,7 +65,11 @@ I built it, broke it, fixed it, and deployed it — all using Azure's free and l
 └─────────────────────┘  └─────────────────────────────┘
 ```
 
+</details>
+
 **Key principle:** Every service talks to the next one. This is not three isolated deployments — it's one connected system.
+
+Two CI/CD pipelines — **GitHub Actions** and **Azure DevOps** — both deploy to App Service on every push to `main`, running in parallel.
 
 ---
 
@@ -103,7 +112,8 @@ azure-web-app-project/
 │   ├── azure-setup.sh          # Full Azure CLI setup script
 │   └── setup-database.sql      # SQL table schema
 ├── docs/
-│   └── PROJECT.md              # Detailed project documentation
+│   ├── PROJECT.md              # Detailed project documentation
+│   └── screenshots/            # Screenshots used throughout this README
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions CI/CD
@@ -219,6 +229,8 @@ Deploy to Production stage:
 3. Connect GitHub repo via OAuth
 4. Run pipeline — Azure DevOps auto-detects `azure-pipelines.yml`
 
+See the [screenshot gallery](#-screenshot-gallery) below for the pipeline run and service connection in action.
+
 </details>
 
 ---
@@ -243,6 +255,110 @@ This project runs at near-zero cost using free and low-cost tiers:
 > ```bash
 > az group delete --name rg-3tier-app --yes --no-wait
 > ```
+
+</details>
+
+---
+
+## 📸 Screenshot Gallery
+
+A closer look at the Azure resources, configuration, data layer, security, and CI/CD pipelines behind this project. Click any section to expand.
+
+### ☁️ Azure Resources
+
+<details>
+<summary><strong>Resource group — all provisioned resources</strong></summary>
+
+![Resource group overview](./docs/screenshots/02-resource-group-overview.png)
+
+All resources in `rg-3tier-app`, Sweden Central: App Service, App Service Plan, SQL Server + Database, Storage Account, and two Managed Identities used by Azure DevOps.
+
+</details>
+
+<details>
+<summary><strong>App Service overview</strong></summary>
+
+![App Service overview](./docs/screenshots/03-app-service-overview.png)
+
+`webapp-3tier-mr` — Linux, F1 Free tier, connected to the GitHub repository for continuous deployment.
+
+</details>
+
+<details>
+<summary><strong>Environment variables</strong></summary>
+
+![Environment variables](./docs/screenshots/04-environment-variables.png)
+
+All secrets — database credentials and the storage connection string — are stored as App Service environment variables, never in source code. Values are hidden in this view.
+
+</details>
+
+### 🗄️ Data & Storage
+
+<details>
+<summary><strong>Azure SQL — query editor</strong></summary>
+
+![SQL query editor](./docs/screenshots/05-sql-query-editor.png)
+
+Running `SELECT * FROM Items` directly against `app-database` using the Azure Portal Query Editor.
+
+</details>
+
+<details>
+<summary><strong>SQL firewall rules</strong></summary>
+
+![SQL firewall rules](./docs/screenshots/06-sql-firewall-rules.png)
+
+"Allow Azure services and resources to access this server" is enabled, so App Service can reach the database without exposing it to the public internet.
+
+</details>
+
+<details>
+<summary><strong>Blob Storage — app-assets container</strong></summary>
+
+![Blob storage containers](./docs/screenshots/07-blob-storage-containers.png)
+
+Uploaded files are stored in the private `app-assets` container inside the `str3tierapp` storage account.
+
+</details>
+
+<details>
+<summary><strong>Queue Storage — item-notifications</strong></summary>
+
+![Queue storage message](./docs/screenshots/08-queue-storage-message.png)
+
+Every new item creates a JSON message in the `item-notifications` queue — the async, decoupled notification layer.
+
+</details>
+
+### 🔐 Security & Access
+
+<details>
+<summary><strong>RBAC — role assignments</strong></summary>
+
+![RBAC IAM](./docs/screenshots/09-rbac-iam.png)
+
+Access control for `rg-3tier-app`: Owner roles plus a Reader role assigned via Microsoft Entra ID.
+
+</details>
+
+### ⚙️ CI/CD Pipelines
+
+<details>
+<summary><strong>Azure DevOps — pipeline run</strong></summary>
+
+![Azure DevOps pipeline run](./docs/screenshots/10-azure-devops-pipeline.png)
+
+A multi-stage pipeline: Build & Test, then Deploy to Production — gated behind a manual approval step.
+
+</details>
+
+<details>
+<summary><strong>Azure DevOps — service connection</strong></summary>
+
+![Azure DevOps service connection](./docs/screenshots/11-azure-devops-service-connection.png)
+
+`azure-connection` — an Azure Resource Manager service connection authenticated via Workload Identity Federation, with no stored passwords or secrets.
 
 </details>
 
